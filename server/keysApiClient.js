@@ -26,7 +26,13 @@ function createKeysApiClient({ baseUrl, apiKey }) {
     getKeyInfo: (keyId) =>
       request('/internal/keys/info', { body: { key_id: keyId } }),
     getUserSecurityState: (username) =>
-      request('/internal/users/security', { body: { username } })
+      request('/internal/users/security', { body: { username } }),
+    issueKey: ({ username, plan, starts_at, ends_at, payment_id, order_id }) =>
+      request('/internal/keys/issue', {
+        body: { username, plan, starts_at, ends_at, payment_id, order_id }
+      }),
+    getUserSubscriptions: (username) =>
+      request('/internal/users/subscriptions', { body: { username } })
   };
 }
 

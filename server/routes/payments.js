@@ -12,7 +12,7 @@ const PLAN_CONFIG = {
   month: { amount: 25, currency: 'gbp', days: 30 }
 };
 
-function createPaymentsRouter() {
+function createPaymentsRouter({ keysApi }) {
   const router = express.Router();
 
   router.post('/payments/create', requireUser, async (req, res) => {
@@ -59,24 +59,13 @@ function createPaymentsRouter() {
   });
 
   router.get('/account/subscriptions', requireUser, async (req, res) => {
-    if (!loginDbPool) {
-      return res.status(500).json({ error: 'Login database not configured.' });
+    if (!keysApi) {
+      return res.status(500).json({ error: 'Keys API not configured.' });
     }
 
     try {
-      const client = await loginDbPool.connect();
-      try {
-        const result = await client.query(
-          `SELECT plan, sub_key, status, starts_at, ends_at
-           FROM user_subscriptions
-           WHERE user_id = $1
-           ORDER BY ends_at DESC`,
-          [req.user.id]
-        );
-        res.json({ subscriptions: result.rows });
-      } finally {
-        client.release();
-      }
+      const data = await keysApi.getUserSubscriptions(req.user.username);
+      res.json({ subscriptions: data.subscriptions || [] });
     } catch (err) {
       console.error('[SapphireStore] /api/account/subscriptions error:', err);
       res.status(500).json({ error: 'Server error.' });
@@ -109,8 +98,8 @@ function createPaymentsRouter() {
       return res.status(400).json({ error: 'Invalid order_id.' });
     }
 
-    if (!loginDbPool) {
-      return res.status(500).json({ error: 'Login database not configured.' });
+    if (!loginDbPool || !keysApi) {
+      return res.status(500).json({ error: 'Backend not fully configured.' });
     }
 
     try {
@@ -130,7 +119,14 @@ function createPaymentsRouter() {
         const now = new Date();
         const ends = new Date(now.getTime() + cfg.days * 24 * 60 * 60 * 1000);
 
-        const subKey = crypto.randomBytes(16).toString('hex');
+        await keysApi.issueKey({
+          username,
+          plan,
+          starts_at: now.toISOString(),
+          ends_at: ends.toISOString(),
+          payment_id: String(payload.payment_id || ''),
+          order_id: orderId
+        });
 
         await client.query(
           `INSERT INTO user_subscriptions
@@ -139,7 +135,7 @@ function createPaymentsRouter() {
           [
             userId,
             plan,
-            subKey,
+            'SYNCED_TO_DB2',
             String(payload.payment_id || ''),
             orderId,
             now.getTime(),

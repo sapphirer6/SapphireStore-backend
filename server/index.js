@@ -31,7 +31,7 @@ const keysApi = createKeysApiClient({
 
 app.use('/api/auth', createAuthRouter({ loginDbPool }));
 app.use('/api/admin', createAdminRouter());
-app.use('/api', createPaymentsRouter());
+app.use('/api', createPaymentsRouter({ keysApi }));
 
 app.get('/api/health', (_req, res) => {
   res.json({
