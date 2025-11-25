@@ -1,0 +1,61 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+
+function createAuthRouter({ loginDbPool }) {
+  const router = express.Router();
+
+  router.post('/login', async (req, res) => {
+    if (!loginDbPool) {
+      return res
+        .status(500)
+        .json({ error: 'Login database not configured on server.' });
+    }
+
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Missing username or password.' });
+    }
+
+    try {
+      const client = await loginDbPool.connect();
+      try {
+        const result = await client.query(
+          'SELECT id, username, password_hash, role FROM login_users WHERE username = $1',
+          [username]
+        );
+
+        if (result.rowCount === 0) {
+          return res.status(401).json({ error: 'Invalid credentials.' });
+        }
+
+        const user = result.rows[0];
+        const ok = await bcrypt.compare(password, user.password_hash);
+        if (!ok) {
+          return res.status(401).json({ error: 'Invalid credentials.' });
+        }
+
+        // For now, just return minimal session info.
+        // Later phases will add proper session tokens.
+        await client.query(
+          'UPDATE login_users SET last_login_at = NOW() WHERE id = $1',
+          [user.id]
+        );
+
+        res.json({
+          id: user.id,
+          username: user.username,
+          role: user.role
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error('[SapphireStore] /api/auth/login error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  return router;
+}
+
+module.exports = { createAuthRouter };
