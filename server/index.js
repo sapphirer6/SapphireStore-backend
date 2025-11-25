@@ -8,12 +8,19 @@ const { createLoginDbPool } = require('./loginDb');
 const { createKeysApiClient } = require('./keysApiClient');
 const { createAuthRouter } = require('./routes/auth');
 const { createAdminRouter } = require('./routes/admin');
+const { createPaymentsRouter } = require('./routes/payments');
 
 const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(bodyParser.json());
+app.use(
+  bodyParser.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf.toString('utf8');
+    }
+  })
+);
 
 const loginDbPool = createLoginDbPool();
 
@@ -24,6 +31,7 @@ const keysApi = createKeysApiClient({
 
 app.use('/api/auth', createAuthRouter({ loginDbPool }));
 app.use('/api/admin', createAdminRouter());
+app.use('/api', createPaymentsRouter());
 
 app.get('/api/health', (_req, res) => {
   res.json({
