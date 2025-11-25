@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const { createAdminToken } = require('../adminAuth');
 
 function createAuthRouter({ loginDbPool }) {
   const router = express.Router();
@@ -41,10 +42,13 @@ function createAuthRouter({ loginDbPool }) {
           [user.id]
         );
 
+        const token = createAdminToken(user);
+
         res.json({
           id: user.id,
           username: user.username,
-          role: user.role
+          role: user.role,
+          token
         });
       } finally {
         client.release();

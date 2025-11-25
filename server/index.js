@@ -7,6 +7,7 @@ const cors = require('cors');
 const { createLoginDbPool } = require('./loginDb');
 const { createKeysApiClient } = require('./keysApiClient');
 const { createAuthRouter } = require('./routes/auth');
+const { createAdminRouter } = require('./routes/admin');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -22,6 +23,7 @@ const keysApi = createKeysApiClient({
 });
 
 app.use('/api/auth', createAuthRouter({ loginDbPool }));
+app.use('/api/admin', createAdminRouter());
 
 app.get('/api/health', (_req, res) => {
   res.json({
