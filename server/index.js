@@ -31,7 +31,7 @@ const keysApi = createKeysApiClient({
 });
 
 app.use('/api/auth', createAuthRouter({ loginDbPool }));
-app.use('/api/admin', createAdminRouter());
+app.use('/api/admin', createAdminRouter({ keysApi }));
 app.use('/api', createPaymentsRouter({ keysApi }));
 app.use('/api', createLoaderRouter({ keysApi }));
 
