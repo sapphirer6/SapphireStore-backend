@@ -20,24 +20,43 @@ function createLoaderRouter({ keysApi }) {
   });
 
   function decodePayload(body) {
-    if (body && typeof body.d === 'string') {
-      const hex = body.d;
-      if (hex.length % 2 !== 0) return null;
-      const key = 0xA7;
-      const bytes = [];
-      for (let i = 0; i < hex.length; i += 2) {
-        const byte = parseInt(hex.substr(i, 2), 16);
-        if (Number.isNaN(byte)) return null;
-        bytes.push(byte ^ key);
-      }
-      try {
-        const json = Buffer.from(bytes).toString('utf8');
-        return JSON.parse(json);
-      } catch {
+    if (!body || typeof body.d !== 'string')
+      return null;
+
+    const hex = body.d;
+    if (hex.length < 4 || hex.length % 2 !== 0)
+      return null;
+
+    const sessionKey = parseInt(hex.substr(0, 2), 16);
+    if (Number.isNaN(sessionKey))
+      return null;
+
+    const bytes = [];
+    for (let i = 2; i < hex.length; i += 2) {
+      const byte = parseInt(hex.substr(i, 2), 16);
+      if (Number.isNaN(byte))
         return null;
-      }
+      bytes.push(byte ^ sessionKey);
     }
-    return body || null;
+
+    const buf = Buffer.from(bytes);
+    if (buf.length < 1 + 8)
+      return null;
+
+    const versionLen = buf[0];
+    if (buf.length < 1 + versionLen + 8)
+      return null;
+
+    const version = buf.slice(1, 1 + versionLen).toString('utf8');
+    const hashBytes = buf.slice(1 + versionLen, 1 + versionLen + 8);
+
+    let hash = 0n;
+    for (let i = 0; i < hashBytes.length; ++i) {
+      hash = (hash << 8n) | BigInt(hashBytes[i]);
+    }
+    const hashStr = '0x' + hash.toString(16).padStart(16, '0').toUpperCase();
+
+    return { version, hash: hashStr };
   }
 
   router.post('/loader/prehandshake', async (req, res) => {
