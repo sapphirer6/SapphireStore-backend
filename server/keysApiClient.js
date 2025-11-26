@@ -53,9 +53,21 @@ function createKeysApiClient({ baseUrl, apiKey }) {
       request('/internal/loader/integrity/validate', {
         body: { version, hash }
       }),
+    validateLoaderPrehandshakeSecure: ({ d }) =>
+      request('/internal/loader/prehandshake-secure', {
+        body: { d }
+      }),
+    validateLoaderHeartbeatSecure: ({ d }) =>
+      request('/internal/loader/heartbeat-secure', {
+        body: { d }
+      }),
     authKey: ({ key_id, hwid, nonce, ip }) =>
       request('/internal/keys/auth', {
         body: { key_id, hwid, nonce, ip }
+      }),
+    authKeySecure: ({ d, ip }) =>
+      request('/internal/keys/auth-secure', {
+        body: { d, ip }
       }),
     issueKey: ({ username, plan, starts_at, ends_at, payment_id, order_id }) =>
       request('/internal/keys/issue', {

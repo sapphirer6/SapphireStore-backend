@@ -60,14 +60,14 @@ function createLoaderRouter({ keysApi }) {
   }
 
   router.post('/loader/prehandshake', async (req, res) => {
-    const inner = decodePayload(req.body);
-    const { version, hash } = inner || {};
-    if (!version || !hash) {
-      return res.status(400).json({ error: 'version and hash required' });
+    if (!req.body || typeof req.body.d !== 'string') {
+      return res.status(400).json({ error: 'invalid payload' });
     }
 
+    const d = req.body.d;
+
     try {
-      const result = await keysApi.validateLoaderIntegrity({ version, hash });
+      const result = await keysApi.validateLoaderPrehandshakeSecure({ d });
       const ok = !!result && result.integrity_ok === true;
       res.type('text/plain').send(ok ? '1' : '0');
     } catch (err) {
@@ -77,14 +77,14 @@ function createLoaderRouter({ keysApi }) {
   });
 
   router.post('/loader/heartbeat', async (req, res) => {
-    const inner = decodePayload(req.body);
-    const { version, hash } = inner || {};
-    if (!version || !hash) {
-      return res.status(400).json({ error: 'version and hash required' });
+    if (!req.body || typeof req.body.d !== 'string') {
+      return res.status(400).json({ error: 'invalid payload' });
     }
 
+    const d = req.body.d;
+
     try {
-      const result = await keysApi.validateLoaderIntegrity({ version, hash });
+      const result = await keysApi.validateLoaderHeartbeatSecure({ d });
       const ok = !!result && result.integrity_ok === true;
       res.type('text/plain').send(ok ? '1' : '0');
     } catch (err) {
@@ -98,39 +98,7 @@ function createLoaderRouter({ keysApi }) {
       return res.status(400).json({ error: 'invalid payload' });
     }
 
-    const hex = req.body.d;
-    if (hex.length < 4 || hex.length % 2 !== 0) {
-      return res.status(400).json({ error: 'invalid payload length' });
-    }
-
-    const sessionKey = parseInt(hex.substr(0, 2), 16);
-    if (Number.isNaN(sessionKey)) {
-      return res.status(400).json({ error: 'invalid session key' });
-    }
-
-    const bytes = [];
-    for (let i = 2; i < hex.length; i += 2) {
-      const byte = parseInt(hex.substr(i, 2), 16);
-      if (Number.isNaN(byte)) {
-        return res.status(400).json({ error: 'invalid hex' });
-      }
-      bytes.push(byte ^ sessionKey);
-    }
-
-    const buf = Buffer.from(bytes);
-    const text = buf.toString('utf8');
-    const parts = text.split('|');
-    if (parts.length !== 3) {
-      return res.status(400).json({ error: 'invalid auth payload' });
-    }
-
-    const key_id = parts[0];
-    const hwid = parts[1];
-    const nonce = parts[2];
-
-    if (!key_id || !hwid || !nonce) {
-      return res.status(400).json({ error: 'key, hwid and nonce required' });
-    }
+    const d = req.body.d;
 
     const ipHeader = req.headers['x-forwarded-for'];
     const clientIp = Array.isArray(ipHeader)
@@ -138,7 +106,7 @@ function createLoaderRouter({ keysApi }) {
       : (ipHeader || '').split(',')[0].trim() || req.ip;
 
     try {
-      const result = await keysApi.authKey({ key_id, hwid, nonce, ip: clientIp });
+      const result = await keysApi.authKeySecure({ d, ip: clientIp });
       const ok = !!result && result.auth_ok === true;
 
       if (!ok) {
