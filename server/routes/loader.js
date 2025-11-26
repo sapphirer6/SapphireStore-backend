@@ -68,7 +68,8 @@ function createLoaderRouter({ keysApi }) {
 
     try {
       const result = await keysApi.validateLoaderIntegrity({ version, hash });
-      res.json(result);
+      const ok = !!result && result.integrity_ok === true;
+      res.type('text/plain').send(ok ? '1' : '0');
     } catch (err) {
       console.error('[SapphireStore] /api/loader/prehandshake error:', err);
       res.status(500).json({ error: 'Server error.' });
@@ -84,7 +85,8 @@ function createLoaderRouter({ keysApi }) {
 
     try {
       const result = await keysApi.validateLoaderIntegrity({ version, hash });
-      res.json(result);
+      const ok = !!result && result.integrity_ok === true;
+      res.type('text/plain').send(ok ? '1' : '0');
     } catch (err) {
       console.error('[SapphireStore] /api/loader/heartbeat error:', err);
       res.status(500).json({ error: 'Server error.' });
