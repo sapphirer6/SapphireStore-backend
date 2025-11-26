@@ -1,8 +1,26 @@
 const fetch = (...args) => import('node-fetch').then(({ default: fetchFn }) => fetchFn(...args));
 
+function normalizeBaseUrl(baseUrl) {
+  let url = baseUrl || '';
+
+  // If the operator passed a bare host (no scheme), default to https://
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+
+  // Trim any trailing slash so path joining is consistent
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+
+  return url;
+}
+
 function createKeysApiClient({ baseUrl, apiKey }) {
+  const normalizedBase = normalizeBaseUrl(baseUrl);
+
   async function request(path, options = {}) {
-    const url = `${baseUrl}${path}`;
+    const url = `${normalizedBase}${path}`;
     const headers = {
       'Content-Type': 'application/json',
       'x-internal-api-key': apiKey,
