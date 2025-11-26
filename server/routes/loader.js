@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAdmin, requireUser } = require('../adminAuth');
+const { requireAdmin } = require('../adminAuth');
 
 function createLoaderRouter({ keysApi }) {
   const router = express.Router();
@@ -19,8 +19,30 @@ function createLoaderRouter({ keysApi }) {
     }
   });
 
-  router.post('/loader/prehandshake', requireUser, async (req, res) => {
-    const { version, hash } = req.body || {};
+  function decodePayload(body) {
+    if (body && typeof body.d === 'string') {
+      const hex = body.d;
+      if (hex.length % 2 !== 0) return null;
+      const key = 0xA7;
+      const bytes = [];
+      for (let i = 0; i < hex.length; i += 2) {
+        const byte = parseInt(hex.substr(i, 2), 16);
+        if (Number.isNaN(byte)) return null;
+        bytes.push(byte ^ key);
+      }
+      try {
+        const json = Buffer.from(bytes).toString('utf8');
+        return JSON.parse(json);
+      } catch {
+        return null;
+      }
+    }
+    return body || null;
+  }
+
+  router.post('/loader/prehandshake', async (req, res) => {
+    const inner = decodePayload(req.body);
+    const { version, hash } = inner || {};
     if (!version || !hash) {
       return res.status(400).json({ error: 'version and hash required' });
     }
@@ -34,8 +56,9 @@ function createLoaderRouter({ keysApi }) {
     }
   });
 
-  router.post('/loader/heartbeat', requireUser, async (req, res) => {
-    const { version, hash } = req.body || {};
+  router.post('/loader/heartbeat', async (req, res) => {
+    const inner = decodePayload(req.body);
+    const { version, hash } = inner || {};
     if (!version || !hash) {
       return res.status(400).json({ error: 'version and hash required' });
     }
@@ -53,4 +76,3 @@ function createLoaderRouter({ keysApi }) {
 }
 
 module.exports = { createLoaderRouter };
-
