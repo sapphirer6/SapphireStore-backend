@@ -53,6 +53,10 @@ function createKeysApiClient({ baseUrl, apiKey }) {
       request('/internal/loader/integrity/validate', {
         body: { version, hash }
       }),
+    authKey: ({ key_id, hwid, nonce, ip }) =>
+      request('/internal/keys/auth', {
+        body: { key_id, hwid, nonce, ip }
+      }),
     issueKey: ({ username, plan, starts_at, ends_at, payment_id, order_id }) =>
       request('/internal/keys/issue', {
         body: { username, plan, starts_at, ends_at, payment_id, order_id }

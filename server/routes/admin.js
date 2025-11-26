@@ -8,6 +8,42 @@ function createAdminRouter({ keysApi } = {}) {
     res.json({ admin: req.admin });
   });
 
+   router.post('/keys/create', requireAdmin, async (req, res) => {
+    if (!keysApi) {
+      return res.status(500).json({ error: 'Keys API not configured.' });
+    }
+
+    const { username, plan, duration_days } = req.body || {};
+    if (!username || !plan) {
+      return res.status(400).json({ error: 'username and plan required' });
+    }
+
+    const now = new Date();
+    const days = Number(duration_days) > 0 ? Number(duration_days) : 1;
+    const ends = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    try {
+      const result = await keysApi.issueKey({
+        username,
+        plan,
+        starts_at: now.toISOString(),
+        ends_at: ends.toISOString(),
+        payment_id: null,
+        order_id: `admin:${username}:${Date.now()}`
+      });
+
+      res.json({
+        ok: true,
+        key: result.key,
+        plan: result.plan,
+        expires_at: result.expires_at
+      });
+    } catch (err) {
+      console.error('[SapphireStore] /api/admin/keys/create error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   router.get('/users/:username/subscriptions', requireAdmin, async (req, res) => {
     if (!keysApi) {
       return res.status(500).json({ error: 'Keys API not configured.' });
