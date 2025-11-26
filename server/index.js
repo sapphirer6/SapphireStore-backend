@@ -9,6 +9,7 @@ const { createKeysApiClient } = require('./keysApiClient');
 const { createAuthRouter } = require('./routes/auth');
 const { createAdminRouter } = require('./routes/admin');
 const { createPaymentsRouter } = require('./routes/payments');
+const { createLoaderRouter } = require('./routes/loader');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -32,6 +33,7 @@ const keysApi = createKeysApiClient({
 app.use('/api/auth', createAuthRouter({ loginDbPool }));
 app.use('/api/admin', createAdminRouter());
 app.use('/api', createPaymentsRouter({ keysApi }));
+app.use('/api', createLoaderRouter({ keysApi }));
 
 app.get('/api/health', (_req, res) => {
   res.json({

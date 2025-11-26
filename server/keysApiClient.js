@@ -27,6 +27,14 @@ function createKeysApiClient({ baseUrl, apiKey }) {
       request('/internal/keys/info', { body: { key_id: keyId } }),
     getUserSecurityState: (username) =>
       request('/internal/users/security', { body: { username } }),
+    registerLoaderBuild: ({ version, expected_hash }) =>
+      request('/internal/loader/integrity/register', {
+        body: { version, expected_hash }
+      }),
+    validateLoaderIntegrity: ({ version, hash }) =>
+      request('/internal/loader/integrity/validate', {
+        body: { version, hash }
+      }),
     issueKey: ({ username, plan, starts_at, ends_at, payment_id, order_id }) =>
       request('/internal/keys/issue', {
         body: { username, plan, starts_at, ends_at, payment_id, order_id }
