@@ -140,7 +140,28 @@ function createLoaderRouter({ keysApi }) {
     try {
       const result = await keysApi.authKey({ key_id, hwid, nonce, ip: clientIp });
       const ok = !!result && result.auth_ok === true;
-      res.type('text/plain').send(ok ? '1' : '0');
+
+      if (!ok) {
+        res.type('text/plain').send('0');
+        return;
+      }
+
+      let friendly = 'Active subscription';
+      if (result.subscription_expires_at) {
+        const ends = new Date(result.subscription_expires_at);
+        const now = new Date();
+        const diffMs = ends.getTime() - now.getTime();
+        if (diffMs <= 0) {
+          friendly = 'Expired';
+        } else {
+          const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+          friendly = days === 1 ? '1 day left' : `${days} days left`;
+        }
+      }
+
+      const plan = result.plan || '';
+      const payload = `1|${plan}|${friendly}`;
+      res.type('text/plain').send(payload);
     } catch (err) {
       console.error('[SapphireStore] /api/loader/auth error:', err);
       res.status(500).json({ error: 'Server error.' });
