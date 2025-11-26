@@ -8,7 +8,7 @@ function createAdminRouter({ keysApi } = {}) {
     res.json({ admin: req.admin });
   });
 
-   router.post('/keys/create', requireAdmin, async (req, res) => {
+  router.post('/keys/create', requireAdmin, async (req, res) => {
     if (!keysApi) {
       return res.status(500).json({ error: 'Keys API not configured.' });
     }
@@ -40,6 +40,44 @@ function createAdminRouter({ keysApi } = {}) {
       });
     } catch (err) {
       console.error('[SapphireStore] /api/admin/keys/create error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  router.get('/keys/:keyId/info', requireAdmin, async (req, res) => {
+    if (!keysApi) {
+      return res.status(500).json({ error: 'Keys API not configured.' });
+    }
+
+    const { keyId } = req.params;
+    if (!keyId) {
+      return res.status(400).json({ error: 'keyId required' });
+    }
+
+    try {
+      const data = await keysApi.getKeyInfo(keyId);
+      res.json({ key: data });
+    } catch (err) {
+      console.error('[SapphireStore] /api/admin/keys/:keyId/info error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  router.get('/users/:username/security', requireAdmin, async (req, res) => {
+    if (!keysApi) {
+      return res.status(500).json({ error: 'Keys API not configured.' });
+    }
+
+    const { username } = req.params;
+    if (!username) {
+      return res.status(400).json({ error: 'username required' });
+    }
+
+    try {
+      const data = await keysApi.getUserSecurityState(username);
+      res.json({ user: data });
+    } catch (err) {
+      console.error('[SapphireStore] /api/admin/users/:username/security error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });
