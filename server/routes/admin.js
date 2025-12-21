@@ -1,7 +1,7 @@
 const express = require('express');
 const { requireAdmin } = require('../adminAuth');
 
-function createAdminRouter({ keysApi } = {}) {
+function createAdminRouter({ keysApi, loginDbPool } = {}) {
   const router = express.Router();
 
   router.get('/me', requireAdmin, (req, res) => {
@@ -97,6 +97,47 @@ function createAdminRouter({ keysApi } = {}) {
       res.json({ subscriptions: data.subscriptions || [] });
     } catch (err) {
       console.error('[SapphireStore] /api/admin/users/:username/subscriptions error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  router.post('/users/:username/role', requireAdmin, async (req, res) => {
+    if (!loginDbPool) {
+      return res
+        .status(500)
+        .json({ error: 'Login database not configured.' });
+    }
+
+    const { username } = req.params;
+    const { role } = req.body || {};
+
+    const allowedRoles = ['user', 'support', 'admin'];
+    if (!username || !role || !allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'username and valid role required.' });
+    }
+
+    try {
+      const client = await loginDbPool.connect();
+      try {
+        const result = await client.query(
+          `UPDATE login_users
+           SET role = $1,
+               last_login_at = last_login_at
+           WHERE username = $2
+           RETURNING id, username, role`,
+          [role, username]
+        );
+
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: 'User not found.' });
+        }
+
+        res.json({ ok: true, user: result.rows[0] });
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error('[SapphireStore] /api/admin/users/:username/role error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });

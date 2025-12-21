@@ -47,8 +47,28 @@ function requireAdmin(req, res, next) {
   }
 }
 
+function requireSupport(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing support token.' });
+  }
+
+  const token = authHeader.slice(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'support' && decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Support access required.' });
+    }
+    req.support = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired support token.' });
+  }
+}
+
 module.exports = {
   createAdminToken,
-   requireUser,
-  requireAdmin
+  requireUser,
+  requireAdmin,
+  requireSupport
 };
