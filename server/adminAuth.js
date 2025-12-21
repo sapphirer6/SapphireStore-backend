@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'CHANGE_ME_DEV_ONLY';
+const COOKIE_NAME = 'sapphire_session';
 
 function createAdminToken(user) {
   const payload = {
@@ -12,13 +13,25 @@ function createAdminToken(user) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 }
 
-function requireUser(req, res, next) {
+function getTokenFromRequest(req) {
+  if (req.cookies && req.cookies[COOKIE_NAME]) {
+    return req.cookies[COOKIE_NAME];
+  }
+
   const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Bearer ')) {
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return null;
+}
+
+function requireUser(req, res, next) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Missing auth token.' });
   }
 
-  const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
@@ -29,12 +42,11 @@ function requireUser(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Bearer ')) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Missing admin token.' });
   }
 
-  const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.role !== 'admin') {
@@ -48,12 +60,11 @@ function requireAdmin(req, res, next) {
 }
 
 function requireSupport(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Bearer ')) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Missing support token.' });
   }
 
-  const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.role !== 'support' && decoded.role !== 'admin') {
@@ -68,6 +79,7 @@ function requireSupport(req, res, next) {
 
 module.exports = {
   createAdminToken,
+  COOKIE_NAME,
   requireUser,
   requireAdmin,
   requireSupport

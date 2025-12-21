@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { createAdminToken } = require('../adminAuth');
+const { createAdminToken, requireUser, COOKIE_NAME } = require('../adminAuth');
 
 function createAuthRouter({ loginDbPool }) {
   const router = express.Router();
@@ -85,20 +85,25 @@ function createAuthRouter({ loginDbPool }) {
           return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
-        // For now, just return minimal session info.
-        // Later phases will add proper session tokens.
         await client.query(
           'UPDATE login_users SET last_login_at = NOW() WHERE id = $1',
           [user.id]
         );
 
         const token = createAdminToken(user);
+        const secure = process.env.NODE_ENV === 'production';
+
+        res.cookie(COOKIE_NAME, token, {
+          httpOnly: true,
+          secure,
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 1000
+        });
 
         res.json({
           id: user.id,
           username: user.username,
-          role: user.role,
-          token
+          role: user.role
         });
       } finally {
         client.release();
@@ -107,6 +112,24 @@ function createAuthRouter({ loginDbPool }) {
       console.error('[SapphireStore] /api/auth/login error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
+  });
+
+  router.get('/me', requireUser, (req, res) => {
+    res.json({
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role
+    });
+  });
+
+  router.post('/logout', requireUser, (req, res) => {
+    const secure = process.env.NODE_ENV === 'production';
+    res.clearCookie(COOKIE_NAME, {
+      httpOnly: true,
+      secure,
+      sameSite: 'lax'
+    });
+    res.json({ ok: true });
   });
 
   return router;

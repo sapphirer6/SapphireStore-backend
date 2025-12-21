@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 const { createLoginDbPool } = require('./loginDb');
 const { createKeysApiClient } = require('./keysApiClient');
@@ -17,6 +18,7 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors({ origin: true, credentials: true }));
+app.use(cookieParser());
 app.use(
   bodyParser.json({
     verify: (req, _res, buf) => {
