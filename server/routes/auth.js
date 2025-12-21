@@ -5,6 +5,21 @@ const { createAdminToken, requireUser, COOKIE_NAME } = require('../adminAuth');
 function createAuthRouter({ loginDbPool }) {
   const router = express.Router();
 
+  function buildCookieOptions(req) {
+    const host = (req.hostname || '').toLowerCase();
+    const isLocalhost =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.startsWith('localhost:');
+
+    return {
+      httpOnly: true,
+      secure: !isLocalhost,
+      sameSite: isLocalhost ? 'lax' : 'none',
+      maxAge: 60 * 60 * 1000
+    };
+  }
+
   router.post('/signup', async (req, res) => {
     if (!loginDbPool) {
       return res
@@ -91,14 +106,9 @@ function createAuthRouter({ loginDbPool }) {
         );
 
         const token = createAdminToken(user);
-        const secure = process.env.NODE_ENV === 'production';
+        const cookieOptions = buildCookieOptions(req);
 
-        res.cookie(COOKIE_NAME, token, {
-          httpOnly: true,
-          secure,
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 1000
-        });
+        res.cookie(COOKIE_NAME, token, cookieOptions);
 
         res.json({
           id: user.id,
@@ -123,11 +133,11 @@ function createAuthRouter({ loginDbPool }) {
   });
 
   router.post('/logout', requireUser, (req, res) => {
-    const secure = process.env.NODE_ENV === 'production';
+    const cookieOptions = buildCookieOptions(req);
     res.clearCookie(COOKIE_NAME, {
       httpOnly: true,
-      secure,
-      sameSite: 'lax'
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite
     });
     res.json({ ok: true });
   });
