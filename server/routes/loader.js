@@ -69,7 +69,14 @@ function createLoaderRouter({ keysApi }) {
     try {
       const result = await keysApi.validateLoaderPrehandshakeSecure({ d });
       const ok = !!result && result.integrity_ok === true;
-      res.type('text/plain').send(ok ? '1' : '0');
+      let response = ok ? '1' : '0';
+
+      // If we have a session seed, append it
+      if (ok && result.session_seed) {
+        response += '|' + result.session_seed;
+      }
+
+      res.type('text/plain').send(response);
     } catch (err) {
       console.error('[SapphireStore] /api/loader/prehandshake error:', err);
       res.status(500).json({ error: 'Server error.' });
@@ -128,10 +135,29 @@ function createLoaderRouter({ keysApi }) {
       }
 
       const plan = result.plan || '';
-      const payload = `1|${plan}|${friendly}`;
+      const token = result.integrity_token || 'INVALID';
+      const payload = `1|${token}|${plan}|${friendly}`;
       res.type('text/plain').send(payload);
     } catch (err) {
       console.error('[SapphireStore] /api/loader/auth error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  router.post('/loader/load', async (req, res) => {
+    if (!req.body || typeof req.body.d !== 'string') {
+      return res.status(400).json({ error: 'invalid payload' });
+    }
+    const d = req.body.d;
+    try {
+      const result = await keysApi.getPayloadSecure({ d });
+      // Result: { ok: true, payload: "hex..." }
+      if (!result || !result.ok) {
+        return res.type('text/plain').send('0|' + (result?.reason || 'error'));
+      }
+      res.type('text/plain').send('1|' + result.payload);
+    } catch (err) {
+      console.error('[SapphireStore] /api/loader/load error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });

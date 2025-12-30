@@ -69,6 +69,10 @@ function createKeysApiClient({ baseUrl, apiKey }) {
       request('/internal/keys/auth-secure', {
         body: { d, ip }
       }),
+    getPayloadSecure: ({ d }) =>
+      request('/internal/loader/payload-secure', {
+        body: { d }
+      }),
     issueKey: ({ username, plan, starts_at, ends_at, payment_id, order_id }) =>
       request('/internal/keys/issue', {
         body: { username, plan, starts_at, ends_at, payment_id, order_id }
